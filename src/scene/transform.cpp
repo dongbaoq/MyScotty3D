@@ -12,14 +12,22 @@ Mat4 Transform::parent_to_local() const {
 Mat4 Transform::local_to_world() const {
 	// A1T1: local_to_world
 	//don't use Mat4::inverse() in your code.
-
+	if(std::shared_ptr<Transform> parent_ = parent.lock()){
+		return (parent_->local_to_world()) * local_to_parent();
+	}else{
+		return local_to_parent();
+	}
 	return Mat4::I; //<-- wrong, but here so code will compile
 }
 
 Mat4 Transform::world_to_local() const {
 	// A1T1: world_to_local
 	//don't use Mat4::inverse() in your code.
-
+	if(std::shared_ptr<Transform> parent_ = parent.lock()){
+		return parent_to_local() * (parent_ -> world_to_local());
+	}else{
+		return parent_to_local();
+	}
 	return Mat4::I; //<-- wrong, but here so code will compile
 }
 
