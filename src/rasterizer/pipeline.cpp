@@ -361,14 +361,107 @@ void Pipeline<p, P, flags>::rasterize_line(
 	// this function!
 	// The OpenGL specification section 3.5 may also come in handy.
 
-	{ // As a placeholder, draw a point in the middle of the line:
-		//(remove this code once you have a real implementation)
-		Fragment mid;
-		mid.fb_position = (va.fb_position + vb.fb_position) / 2.0f;
-		mid.attributes = va.attributes;
-		mid.derivatives.fill(Vec2(0.0f, 0.0f));
-		emit_fragment(mid);
+	// Bresenham's Algorithm
+	Fragment point;
+	float ax = va.fb_position.x;
+	float ay = va.fb_position.y;
+	float bx = vb.fb_position.x;
+	float by = vb.fb_position.y;
+
+	// Vertical case
+	if(abs(bx - ax, 0) < FLT_EPSILON{
+
+	})
+
+	bool reversed = false;
+	float temp;
+	// Control ax < bx
+	if(bx < ax){
+		temp = ax;
+		ax = bx;
+		bx = temp;
+		
+		temp = ay;
+		ay = by;
+		by = temp;
+		reversed = true;
 	}
+
+
+	float slope = (by - ay) / (bx - ax);
+	
+	// Horizontal case
+	if(abs(slope, 0) < FLT_EPSILON){
+	
+	}
+
+	// Diagonal case
+	if(abs(slope, 1) < FLT_EPSILON){
+
+	}
+	else if(abs(slope, -1) < FLT_EPSILON){
+
+	}
+
+	// Control slope < 0
+	int signslope = 1;
+	if(slope < 0){
+		signslope = -1;
+		slope = (-1) * slope;
+	}
+
+	// Control slope > 1
+	bool yxcoord = false;
+	if(slope > 1){
+		yxcoord = true;
+		temp = ax;
+		ax = ay;
+		ay = temp;
+
+		temp = bx;
+		bx = by;
+		by = temp;
+	}
+
+	// General case
+	// Start from (floor(ax)+0.5, floor(ay)+0.5)
+	int32_t x = std::floor(ax);
+	int32_t y = std::floor(ay);
+	// Epsilon is line's intersection at x = (pixel x) + 0.5, measure from (pixel y)
+	float epsilon = ay + (x + 0.5 - ax) * slope;
+	
+	if(y + slope * (ax - x - 0.5) > ay) { x++; epsilon += slope; }
+	else if(ay + (x + 0.5 - ax) * slope >= y + 1) { y++; epsilon -= 1; }
+	else if(ax - x + ay - y > 1.5) { x++; y++; epsilon += (slope - 1); }
+	Fragment point;
+	for( ; x <= std::floor(bx) ; x++){
+	
+		point.fb_position = Vec3(x, y, (ax))
+		point.attributes = va.attributes;
+		point.derivatives = Vec2(0.0f, 0.0f);
+		
+		// Next pixel becomes (x+1, y+1)
+		if(epsilon > 1 - slope) {
+			x++;
+			y++;
+			epsilon += (slope - 1);
+		} // Next pixel becomes (x+1, y)
+		else{
+			x++;
+			epsilon += slope;
+		}
+	}
+
+
+
+	// { // As a placeholder, draw a point in the middle of the line:
+	// 	//(remove this code once you have a real implementation)
+	// 	Fragment mid;
+	// 	mid.fb_position = (va.fb_position + vb.fb_position) / 2.0f;
+	// 	mid.attributes = va.attributes;
+	// 	mid.derivatives.fill(Vec2(0.0f, 0.0f));
+	// 	emit_fragment(mid);
+	// }
 
 }
 

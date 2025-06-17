@@ -185,4 +185,14 @@ Test test_a1_task2_simple_vertical("a1.task2.simple.vertical", []() {
 	);
 });
 
+Test test_a1_task2_general("a1.task2.general", []() {
+	check_line_covers(
+		"General line from (1.000, 1.000) to (4.000, 3.000)",
+		{ Vec2(1.000f, 1.000f), Vec2(4.000f, 3.000f) },
+		{"....#",
+		 "..##.",
+		 ".#...",
+		 "....."}
+	);
+});
 
