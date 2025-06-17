@@ -208,3 +208,25 @@ Test test_a1_task2_general_slope_over_1("a1.task2.general.slope.over.1", []() {
 		"#..."}
 	);
 });
+
+Test test_a1_task2_general_slope_1("a1.task2.general.slope.1", []() {
+	check_line_covers(
+		"General line from (0.250, 0.250) to (3.750, 3.750)",
+		{ Vec2(0.250f, 0.250f), Vec2(3.750f, 3.750f) },
+		{"...#",
+		 "..#.",
+		 ".#..",
+		 "#..."}
+	);
+});
+
+Test test_a1_task2_general_slope_m1("a1.task2.general.slope.m1", []() {
+	check_line_covers(
+		"General line from (0.250, 3.750) to (3.750, 0.250)",
+		{ Vec2(0.250f, 3.750f), Vec2(3.750f, 0.250f) },
+		{"#...",
+		 ".#..",
+		 "..#.",
+		 "...#"}
+	);
+});

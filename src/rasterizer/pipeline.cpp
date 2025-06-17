@@ -370,6 +370,11 @@ void Pipeline<p, P, flags>::rasterize_line(
 	bool reversed = false;
 	float temp;
 
+	// Inside one pixel then just exit
+	if(std::floor(ax) == std::floor(bx) && std::floor(ay) == std::floor(by)){
+		return;
+	}
+
 	// Vertical case
 	if(std::abs(bx - ax) < FLT_EPSILON){
 		std::cout << "Vertical case" << std::endl;
@@ -487,10 +492,88 @@ void Pipeline<p, P, flags>::rasterize_line(
 
 	// Diagonal case
 	if(std::abs(slope - 1) < FLT_EPSILON){
+		std::cout << "Diagonal positive case" << std::endl;
+
+		// Start from (floor(ax)+0.5, floor(ay)+0.5)
+		int32_t x = std::floor(ax);
+		int32_t y = std::floor(ay);
+		float interpolate_z;
+		if((ay - y) - (ax - x) < -0.5){
+			x++;
+		}else if((ay - y) - (ax - x) > 0.5){
+			y++;
+		}
+
+		for( ; x <= std::floor(bx) - 1 ; x++){
+			if(reversed){
+				interpolate_z = (va.fb_position.z * (x + 0.5f - ax) + vb.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}else{
+				interpolate_z = (vb.fb_position.z * (x + 0.5f - ax) + va.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}
+			point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+
+			y++;
+		}
+
+		if(std::abs(by - std::floor(by) - 0.5) + std::abs(bx - std::floor(bx) - 0.5) <= 0.5 || by - std::floor(by) + bx - std::floor(bx) > 1.5){
+			if(reversed){
+				interpolate_z = va.fb_position.z;
+			}else{
+				interpolate_z = vb.fb_position.z;
+			}
+			point.fb_position = Vec3(std::floor(bx) + 0.5f, std::floor(by) + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+
 		return;
 	}
-	else if(std::abs(slope + 1) < FLT_EPSILON){
-		return;
+	
+	if(std::abs(slope + 1) < FLT_EPSILON){
+		std::cout << "Diagonal negative case" << std::endl;
+		// Start from (floor(ax)+0.5, floor(ay)+0.5)
+		int32_t x = std::floor(ax);
+		int32_t y = std::floor(ay);
+		float interpolate_z;
+		if((ay - y) + (ax - x) < 0.5){
+			y--;
+		}else if((ay - y) + (ax - x) > 1.5){
+			x++;
+		}
+
+		for( ; x <= std::floor(bx) - 1 ; x++){
+			if(reversed){
+				interpolate_z = (va.fb_position.z * (x + 0.5f - ax) + vb.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}else{
+				interpolate_z = (vb.fb_position.z * (x + 0.5f - ax) + va.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}
+			point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+
+			y--;
+		}
+
+		if(std::abs(by - std::floor(by) - 0.5) + std::abs(bx - std::floor(bx) - 0.5) <= 0.5 || (by - std::floor(by)) - (bx - std::floor(bx)) < -0.5){
+			if(reversed){
+				interpolate_z = va.fb_position.z;
+			}else{
+				interpolate_z = vb.fb_position.z;
+			}
+			point.fb_position = Vec3(std::floor(bx) + 0.5f, std::floor(by) + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
 	}
 
 	// Control slope < 0
