@@ -367,14 +367,60 @@ void Pipeline<p, P, flags>::rasterize_line(
 	float ay = va.fb_position.y;
 	float bx = vb.fb_position.x;
 	float by = vb.fb_position.y;
-
-	// Vertical case
-	if(abs(bx - ax, 0) < FLT_EPSILON{
-
-	})
-
 	bool reversed = false;
 	float temp;
+
+	// Vertical case
+	if(std::abs(bx - ax) < FLT_EPSILON){
+		std::cout << "Vertical case" << std::endl;
+		Fragment point;
+		if(ay > by) {
+			temp = by;
+			by = ay;
+			ay = temp;
+			reversed = true;
+		}
+		int x, y;
+		x = std::floor(ax);
+		y = std::floor(ay);
+		if(std::abs(ay - y - 0.5) + std::abs(ax - x - 0.5) <= 0.5 || ay <= y + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, va.fb_position.z);
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, vb.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+		for(y = std::floor(ay) + 1; y <= std::floor(by) - 1; y++){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, (va.fb_position.z * (y + 0.5 - ay) + vb.fb_position.z * (by - y - 0.5)) / (by - ay));
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, (vb.fb_position.z * (y + 0.5 - ay) + va.fb_position.z * (by - y - 0.5)) / (by - ay));
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}	
+		if(std::abs(ay - y - 0.5) + std::abs(ax - x - 0.5) <= 0.5 || by >= y + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, vb.fb_position.z);
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, va.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+		return;
+	}
+
+	
+	
 	// Control ax < bx
 	if(bx < ax){
 		temp = ax;
@@ -391,16 +437,60 @@ void Pipeline<p, P, flags>::rasterize_line(
 	float slope = (by - ay) / (bx - ax);
 	
 	// Horizontal case
-	if(abs(slope, 0) < FLT_EPSILON){
-	
+	if(std::abs(slope) < FLT_EPSILON){
+		std::cout << "Horizontal case" << std::endl;
+		Fragment point;
+		
+		if(ax > bx) {
+			temp = bx;
+			bx = ax;
+			ax = temp;
+		}
+		int x, y;
+		x = std::floor(ax);
+		y = std::floor(ay);
+		if(std::abs(ay - y - 0.5) + std::abs(ax - x - 0.5) <= 0.5 || ax < x + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, vb.fb_position.z);
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, va.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+		for(x = std::floor(ax) + 1; x <= std::floor(bx) - 1; x++){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, (va.fb_position.z * (x + 0.5 - ax) + vb.fb_position.z * (bx - x - 0.5)) / (bx - ax));
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, (vb.fb_position.z * (x + 0.5 - ax) + va.fb_position.z * (bx - x - 0.5)) / (bx - ax));
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}	
+		if(std::abs(ay - y - 0.5) + std::abs(ax - x - 0.5) <= 0.5 || bx > x + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, va.fb_position.z);
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, vb.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+		return;
 	}
 
 	// Diagonal case
-	if(abs(slope, 1) < FLT_EPSILON){
-
+	if(std::abs(slope - 1) < FLT_EPSILON){
+		return;
 	}
-	else if(abs(slope, -1) < FLT_EPSILON){
-
+	else if(std::abs(slope + 1) < FLT_EPSILON){
+		return;
 	}
 
 	// Control slope < 0
@@ -410,10 +500,60 @@ void Pipeline<p, P, flags>::rasterize_line(
 		slope = (-1) * slope;
 	}
 
-	// Control slope > 1
-	bool yxcoord = false;
+	// General case, 0 < slope < 1
+	if(slope < 1){
+		// Start from (floor(ax)+0.5, floor(ay)+0.5)
+		int32_t x = std::floor(ax);
+		int32_t y = std::floor(ay);
+		// Epsilon is line's intersection at x = (pixel x) + 0.5, measure from (pixel y)
+		float epsilon = ay - y + (x + 0.5 - ax) * slope;
+		float interpolate_z;
+		
+		std::cout << "Slope lower than 1 case : " << slope << std::endl;
+		if(y + slope * (ax - x - 0.5) > ay) { x++; epsilon += slope; }
+		else if(ay + (x + 0.5 - ax) * slope >= y + 1) { y+=signslope; epsilon -= 1; }
+		else if(ax - x + ay - y > 1.5) { x++; y+=signslope; epsilon += (slope - 1); }
+
+		Fragment point;
+		for( ; x <= std::floor(bx) - 1 ; x++){
+			if(reversed){
+				interpolate_z = (va.fb_position.z * (x + 0.5f - ax) + vb.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}else{
+				interpolate_z = (vb.fb_position.z * (x + 0.5f - ax) + va.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}
+			
+			point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+
+			// Next pixel becomes (x+1, y+1)
+			if(epsilon > 1 - slope) {
+				y+=signslope;
+				epsilon += (slope - 1);
+			} // Next pixel becomes (x+1, y)
+			else{
+				epsilon += slope;
+			}
+		}
+		if(std::abs(by - y - 0.5) + std::abs(bx - x - 0.5) <= 0.5 || bx > x + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, va.fb_position.z);
+			}else{
+				point.fb_position = Vec3(x + 0.5f, y + 0.5f, vb.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
+		}
+		return;
+	}
+	
+	// General case slope > 1
 	if(slope > 1){
-		yxcoord = true;
+		// Interchange the role of x and y
 		temp = ax;
 		ax = ay;
 		ay = temp;
@@ -421,38 +561,58 @@ void Pipeline<p, P, flags>::rasterize_line(
 		temp = bx;
 		bx = by;
 		by = temp;
-	}
 
-	// General case
-	// Start from (floor(ax)+0.5, floor(ay)+0.5)
-	int32_t x = std::floor(ax);
-	int32_t y = std::floor(ay);
-	// Epsilon is line's intersection at x = (pixel x) + 0.5, measure from (pixel y)
-	float epsilon = ay + (x + 0.5 - ax) * slope;
-	
-	if(y + slope * (ax - x - 0.5) > ay) { x++; epsilon += slope; }
-	else if(ay + (x + 0.5 - ax) * slope >= y + 1) { y++; epsilon -= 1; }
-	else if(ax - x + ay - y > 1.5) { x++; y++; epsilon += (slope - 1); }
-	Fragment point;
-	for( ; x <= std::floor(bx) ; x++){
-	
-		point.fb_position = Vec3(x, y, (ax))
-		point.attributes = va.attributes;
-		point.derivatives = Vec2(0.0f, 0.0f);
+		int32_t x = std::floor(ax);
+		int32_t y = std::floor(ay);
+
+		// Epsilon is line's intersection at x = (pixel x) + 0.5, measure from (pixel y)
+		float invslope = 1.0f/slope;
+		float epsilon = ay - y + (x + 0.5 - ax) * invslope;
+		float interpolate_z;
 		
-		// Next pixel becomes (x+1, y+1)
-		if(epsilon > 1 - slope) {
-			x++;
-			y++;
-			epsilon += (slope - 1);
-		} // Next pixel becomes (x+1, y)
-		else{
-			x++;
-			epsilon += slope;
+		std::cout << "Slope bigger than 1 case : " << slope << std::endl;
+
+		
+		if(y + invslope * (ax - x - 0.5) > ay) { x++; epsilon += invslope; }
+		else if(ay + (x + 0.5 - ax) * invslope >= y + 1) { y+=signslope; epsilon -= 1; }
+		else if(ax - x + ay - y > 1.5) { x++; y+=signslope; epsilon += (invslope - 1); }
+
+		Fragment point;
+		for( ; x <= std::floor(bx) - 1 ; x++){
+			if(reversed){
+				interpolate_z = (va.fb_position.z * (x + 0.5f - ax) + vb.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}else{
+				interpolate_z = (vb.fb_position.z * (x + 0.5f - ax) + va.fb_position.z * (bx - x - 0.5f))/(bx - ax);
+			}
+			
+			point.fb_position = Vec3(y + 0.5f, x + 0.5f, interpolate_z);
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << y+0.5f << ", " << x+0.5f << std::endl;
+
+			// Next pixel becomes (x+1, y+1)
+			if(epsilon > 1 - invslope) {
+				y+=signslope;
+				epsilon += (invslope - 1);
+			} // Next pixel becomes (x+1, y)
+			else{
+				epsilon += invslope;
+			}
 		}
+		if(std::abs(by - y - 0.5) + std::abs(bx - x - 0.5) <= 0.5 || bx > x + 0.5f){
+			if(reversed){
+				point.fb_position = Vec3(y + 0.5f, x + 0.5f, va.fb_position.z);
+			}else{
+				point.fb_position = Vec3(y + 0.5f, x + 0.5f, vb.fb_position.z);
+			}
+			point.attributes = va.attributes;
+			point.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(point);
+			std::cout << "Point coordinate : " << y+0.5f << ", " << x+0.5f << std::endl;
+		}
+		return;
 	}
-
-
 
 	// { // As a placeholder, draw a point in the middle of the line:
 	// 	//(remove this code once you have a real implementation)

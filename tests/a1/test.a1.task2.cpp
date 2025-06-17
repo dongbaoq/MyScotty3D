@@ -185,14 +185,26 @@ Test test_a1_task2_simple_vertical("a1.task2.simple.vertical", []() {
 	);
 });
 
-Test test_a1_task2_general("a1.task2.general", []() {
+Test test_a1_task2_general_slope_below_1("a1.task2.general.slope.below.1", []() {
 	check_line_covers(
-		"General line from (1.000, 1.000) to (4.000, 3.000)",
-		{ Vec2(1.000f, 1.000f), Vec2(4.000f, 3.000f) },
-		{"....#",
-		 "..##.",
-		 ".#...",
-		 "....."}
+		"General line from (0.250, 0.250) to (5.750, 3.250)",
+		{ Vec2(0.250f, 0.250f), Vec2(5.750f, 3.250f) },
+		{".....#",
+		 "...##.",
+		 "..#...",
+		 "##...."}
 	);
 });
 
+Test test_a1_task2_general_slope_over_1("a1.task2.general.slope.over.1", []() {
+	check_line_covers(
+		"General line from (0.250, 0.250) to (3.250, 5.750)",
+		{ Vec2(0.250f, 0.250f), Vec2(3.250f, 5.750f) },
+		{"...#",
+		"..#.",
+		"..#.",
+		".#..",
+		"#...",
+		"#..."}
+	);
+});
