@@ -749,31 +749,71 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 		// TODO: rasterize triangle (see block comment above this function).
 
 		
-		// Making va, vb, vc into counterclockwise order, with va be the most left side vertex. vb.y > vc.y
+		// Making va, vb, vc into counterclockwise order, with va be the most left side vertex. vb.y >= vc.y
 		{
-			
+			float ax, ay, az, bx, by, bz, cx, cy, cz;
+			if((vb.fb_position.x < vc.fb_position.x) && (vb.fb_position.x < va.fb_position.x)){
+				ax = vb.fb_position.x; ay = vb.fb_position.y; az = vb.fb_position.z;
+				if(va.fb_position.y >= vc.fb_position.y){
+					bx = va.fb_position.x; by = va.fb_position.y; bz = va.fb_position.z;
+					cx = vc.fb_position.x; cy = vc.fb_position.y; cz = vc.fb_position.z;
+				}else{
+					cx = va.fb_position.x; cy = va.fb_position.y; cz = va.fb_position.z;
+					bx = vc.fb_position.x; by = vc.fb_position.y; bz = vc.fb_position.z;
+				}
+			}else if((vc.fb_position.x < vb.fb_position.x) && (vc.fb_position.x < va.fb_position.x)){
+				ax = vc.fb_position.x; ay = vc.fb_position.y; az = vc.fb_position.z;
+				if(va.fb_position.y >= vb.fb_position.y){
+					bx = va.fb_position.x; by = va.fb_position.y; bz = va.fb_position.z;
+					cx = vb.fb_position.x; cy = vb.fb_position.y; cz = vb.fb_position.z;
+				}else{
+					cx = va.fb_position.x; cy = va.fb_position.y; cz = va.fb_position.z;
+					bx = vb.fb_position.x; by = vb.fb_position.y; bz = vb.fb_position.z;
+				}
+			}else{
+				ax = va.fb_position.x; ay = va.fb_position.y; az = va.fb_position.z;
+				if(vc.fb_position.y >= vb.fb_position.y){
+					bx = vc.fb_position.x; by = vc.fb_position.y; bz = vc.fb_position.z;
+					cx = vb.fb_position.x; cy = vb.fb_position.y; cz = vb.fb_position.z;
+				}else{
+					cx = vc.fb_position.x; cy = vc.fb_position.y; cz = vc.fb_position.z;
+					bx = vb.fb_position.x; by = vb.fb_position.y; bz = vb.fb_position.z;
+				}
+			}
 		}
 
 		// Corner case if two x values are the same.
 		{
+			if((ax == bx)){
+				
+			}else if(ax == cx){
 
+			}else if(bx == cx){
+
+			}
 		}
 
 		// From va.x, increments x coordinate and rasterize pixels.
 		{
 			Fragment point;
 			int x, y;
-			float slope_high = (vb.fb_position.y - va.fb_position.y) / (vb.fb_position.x - va.fb_position.x);
-			float slope_low = (vc.fb_position.y - va.fb_position.y) / (vc.fb_position.x - va.fb_position.x);
-			float y_max = va.fb_position.y + slope_high * 0.5;
-			float y_min = va.fb_position.y + slope_low * 0.5;
-			float interpolate_z;
+			float slope_high = (by - ay) / (bx - ax);
+			float slope_low = (cy - ay) / (cx - ax);
+			float y_max = ay + slope_high * 0.5;
+			float y_min = ay + slope_low * 0.5;
+			float interpolate_z, lambda_1, lambda_2;
 
-			for(x = std::floor(va.fb_position.x) ; (x <= vb.fb_position.x) && (x <= vc.fb_position.x) ; x++){
+			for(x = std::floor(ax) ; (x <= bx) && (x <= cx) ; x++){
 				// y_min <= y + 0.5 <= y_max
 				for(y = std::floor(y_min - 0.5f) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+					lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+					lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+					interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 					point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+					point.attributes = va.attributes;
+					point.derivatives.fill(Vec2(0.0f, 0.0f));
 					emit_fragment(point);
+					std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
 				}
 				y_max += slope_high;
 				y_min += slope_low;
@@ -781,19 +821,25 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 
 			{
 				float x_max;
-				if(vb.fb_position.x > vc.fb_position.x){
-					x_max = vb.fb_position.x;
+				if(bx > cx){
+					x_max = bx;
 				}else{
-					x_max = vc.fb_position.x;
+					x_max = cx;
 				}
 
-				float slope_other = (vb.fb_position.y - vc.fb_position.y) / (vb.fb_position.x - vc.fb_position.x);
+				float slope_other = (by - cy) / (bx - cx);
 				if(slope_other > FLT_EPSILON){
 					for( ; x <= x_max ; x++){
 						// y_min < y + 0.5 <= y_max
 						for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
 							emit_fragment(point);
+							std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
 						}
 						y_max += slope_high;
 						y_min += slope_other;
@@ -802,8 +848,14 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 					for( ; x <= x_max ; x++){
 						// y_min < y + 0.5 <= y_max
 						for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
 							emit_fragment(point);
+							std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
 						}
 						y_max += slope_other;
 						y_min += slope_low;
@@ -817,17 +869,29 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 						for( ; x <= x_max ; x++){
 							// y_min <= y + 0.5 <= y_max 
 							for(y = std::floor(y_min - 0.5) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+								lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+								interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+								point.attributes = va.attributes;
+								point.derivatives.fill(Vec2(0.0f, 0.0f));
 								emit_fragment(point);
+								std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
 							}
 							y_max += slope_high;
 						}
 					}else{
-						for( ; x <= vb.fb_position.x ; x++){
+						for( ; x <= x_max ; x++){
 							// y_min < y + 0.5 <= y_max 
 							for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+								lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+								interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+								point.attributes = va.attributes;
+								point.derivatives.fill(Vec2(0.0f, 0.0f));
 								emit_fragment(point);
+								std::cout << "Point coordinate : " << x+0.5f << ", " << y+0.5f << std::endl;
 							}
 							y_max += slope_low;
 						}
