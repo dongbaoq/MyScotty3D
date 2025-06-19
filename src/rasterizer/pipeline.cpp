@@ -751,7 +751,7 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 		
 		// Making va, vb, vc into counterclockwise order, with va be the most left side vertex. vb.y >= vc.y
 		
-			float ax, ay, az, bx, by, bz, cx, cy, cz;
+			float ax, ay, az, bx, by, bz, cx, cy, cz, temp;
 			if((vb.fb_position.x < vc.fb_position.x) && (vb.fb_position.x < va.fb_position.x)){
 				ax = vb.fb_position.x; ay = vb.fb_position.y; az = vb.fb_position.z;
 				if(va.fb_position.y >= vc.fb_position.y){
@@ -785,10 +785,183 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 		// Corner case if two x values are the same.
 		{
 			if(std::abs(ax - bx) < FLT_EPSILON){
+				float slope_high, slope_low, y_max, y_min, interpolate_z, lambda_1, lambda_2;
+				Fragment point;
+				if(ay > by){
+					slope_high = (ay - cy) / (ax - cx); slope_low = (by - cy) / (bx - cx);
+					y_max = ay + slope_high * (std::floor(ax) + 0.5 - ax); y_min = by + slope_low * (std::floor(bx) + 0.5 - bx);
+				}else{
+					slope_low = (ay - cy) / (ax - cx); slope_high = (by - cy) / (bx - cx);
+					y_min = ay + slope_high * (std::floor(ax) + 0.5 - ax); y_max = by + slope_low * (std::floor(bx) + 0.5 - bx);
+				}
+
+				if(slope_high >= 0){
+					// y_min < y + 0.5 <= y_max
+					for(int x = std::floor(ax) ; x <= cx ; x++){
+						for(int y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(y_max - 0.5f); y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else if(slope_low < 0){
+					// y_min <= y + 0.5 < y_max
+					for(int x = std::floor(ax) ; x <= cx ; x++){
+						for(int y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else{
+					// y_min < y + 0.5 < y_max
+					for(int x = std::floor(ax) ; x <= cx ; x++){
+						for(int y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}
 				return;
 			}else if(std::abs(ax - cx) < FLT_EPSILON){
+				float slope_high, slope_low, y_max, y_min, interpolate_z, lambda_1, lambda_2;
+				Fragment point;
+				if(ay > cy){
+					slope_high = (ay - by) / (ax - bx); slope_low = (cy - by) / (cx - bx);
+					y_max = ay + slope_high * (std::floor(ax) + 0.5 - ax); y_min = cy + slope_low * (std::floor(cx) + 0.5 - cx);
+				}else{
+					slope_low = (ay - by) / (ax - bx); slope_high = (by - cy) / (bx - cx);
+					y_min = ay + slope_high * (std::floor(ax) + 0.5 - ax); y_max = cy + slope_low * (std::floor(cx) + 0.5 - cx);
+				}
+
+				if(slope_high >= 0){
+					// y_min < y + 0.5 <= y_max
+					for(int x = std::floor(ax) ; x <= bx ; x++){
+						for(int y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(y_max - 0.5f); y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else if(slope_low < 0){
+					// y_min <= y + 0.5 < y_max
+					for(int x = std::floor(ax) ; x <= bx ; x++){
+						for(int y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else{
+					// y_min < y + 0.5 < y_max
+					for(int x = std::floor(ax) ; x <= bx ; x++){
+						for(int y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}
 				return;
 			}else if(std::abs(bx - cx) < FLT_EPSILON){
+				float slope_high, slope_low, y_max, y_min, interpolate_z, lambda_1, lambda_2;
+				Fragment point;
+				slope_high = (by - ay) / (bx - ax);
+				slope_low = (cy - ay) / (cx - ax);
+				y_max = ay + (std::floor(ax) + 0.5 - ax) * slope_high;
+				y_min = ay + (std::floor(ax) + 0.5 - ax) * slope_low;
+				if(slope_low >= 0){
+					// y_min < y + 0.5 <= y_max
+					for(int x = std::floor(ax) ; x <= bx ; x++){
+						for(int y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(y_max - 0.5f); y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else if(slope_high < 0){
+					// y_min <= y + 0.5 < y_max
+					for(int x = std::floor(ax) ; x <= bx ; x++){
+						for(int y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}else{
+					// y_min <= y + 0.5 <= y_max
+					for(int x = std::floor(ax) ; (x <= bx) ; x++){
+						for(int y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(y_max - 0.5f); y++){
+							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							point.attributes = va.attributes;
+							point.derivatives.fill(Vec2(0.0f, 0.0f));
+							emit_fragment(point);
+							std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+						}
+						y_max += slope_high;
+						y_min += slope_low;
+					}
+				}
 				return;
 			}
 		}
@@ -799,26 +972,66 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 			int x, y;
 			float slope_high = (by - ay) / (bx - ax);
 			float slope_low = (cy - ay) / (cx - ax);
-			float y_max = ay + slope_high * (0.5 - ax);
-			float y_min = ay + slope_low * (0.5 - ax);
+			if(slope_high < slope_low){
+				temp = slope_high;
+				slope_high = slope_low;
+				slope_low = temp;
+			}
+			float y_max = ay + slope_high * (std::floor(ax) + 0.5 - ax);
+			float y_min = ay + slope_low * (std::floor(ax) + 0.5 - ax);
 			float interpolate_z, lambda_1, lambda_2;
 
-			for(x = std::floor(ax) ; (x <= bx) && (x <= cx) ; x++){
-				// y_min <= y + 0.5 <= y_max
-				for(y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(y_max - 0.5f); y++){
-					lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
-					lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
-					interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
-					point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
-					point.attributes = va.attributes;
-					point.derivatives.fill(Vec2(0.0f, 0.0f));
-					emit_fragment(point);
-					std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+			
+			if(slope_low >= 0){
+				// y_min < y + 0.5 <= y_max
+				for(x = std::floor(ax) ; (x <= bx) && (x <= cx) ; x++){
+					for(y = std::floor(y_min - 0.5f) + 1 ; y <= std::floor(y_max - 0.5f); y++){
+						lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+						point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+						point.attributes = va.attributes;
+						point.derivatives.fill(Vec2(0.0f, 0.0f));
+						emit_fragment(point);
+						std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+					}
+					y_max += slope_high;
+					y_min += slope_low;
 				}
-				y_max += slope_high;
-				y_min += slope_low;
+			}else if(slope_high <= 0){
+				// y_min <= y + 0.5 < y_max
+				for(x = std::floor(ax) ; (x <= bx) && (x <= cx) ; x++){
+					for(y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) - 1; y++){
+						lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+						point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+						point.attributes = va.attributes;
+						point.derivatives.fill(Vec2(0.0f, 0.0f));
+						emit_fragment(point);
+						std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+					}
+					y_max += slope_high;
+					y_min += slope_low;
+				}
+			}else{
+				//y_min <= y + 0.5 <= y_max
+				for(x = std::floor(ax) ; (x <= bx) && (x <= cx) ; x++){
+					for(y = std::floor(0.5f - y_min) * (-1) ; y <= std::floor(y_max - 0.5f); y++){
+						lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
+						interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
+						point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+						point.attributes = va.attributes;
+						point.derivatives.fill(Vec2(0.0f, 0.0f));
+						emit_fragment(point);
+						std::cout << "Point : " << x + 0.5 << " " << y + 0.5 << std::endl;
+					}
+					y_max += slope_high;
+					y_min += slope_low;
+				}
 			}
-			std::cout << "-------------" << std::endl;
+			
 			{
 				float x_max;
 				if(bx > cx){
@@ -831,14 +1044,14 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 				y_min -= slope_low;
 
 				float slope_other = (by - cy) / (bx - cx);
-				if(slope_other > FLT_EPSILON){
+				if(slope_other > 0){
 					y_max += slope_high;
 					y_min += slope_other;
 					for( ; x <= x_max ; x++){
 						// y_min < y + 0.5 <= y_max
 						for(y = std::floor(y_min - 0.5) + 1 ; y <= std::floor(y_max - 0.5) ; y++){
 							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
-							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
 							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
 							point.attributes = va.attributes;
@@ -849,14 +1062,14 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 						y_max += slope_high;
 						y_min += slope_other;
 					}
-				}else if(slope_other < (-1) * FLT_EPSILON){
+				}else if(slope_other < 0){
 					y_max += slope_other;
 					y_min += slope_low;
 					for( ; x <= x_max ; x++){
 						// y_min < y + 0.5 <= y_max
 						for(y = std::floor(y_min - 0.5) + 1 ; y <= std::floor(y_max - 0.5) ; y++){
 							lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
-							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+							lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
 							interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
 							point.attributes = va.attributes;
@@ -878,7 +1091,7 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 							// y_min <= y + 0.5 <= y_max 
 							for(y = std::floor(0.5 - y_min) * (-1) ; y <= std::floor(y_max - 0.5) ; y++){
 								lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
-								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
 								interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
 								point.attributes = va.attributes;
@@ -894,7 +1107,7 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 							// y_min < y + 0.5 <= y_max 
 							for(y = std::floor(y_min - 0.5) + 1 ; y <= std::floor(y_max - 0.5) ; y++){
 								lambda_1 = ((by - cy) * (x + 0.5 - cx) + (cx - bx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
-								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((cy - ay) * (ax - cx) + (ax - cx) * (ay - cy));
+								lambda_2 = ((cy - ay) * (x + 0.5 - cx) + (ax - cx) * (y + 0.5 - cy)) / ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy));
 								interpolate_z = lambda_1 * az + lambda_2 * bz + (1 - lambda_1 - lambda_2) * cz;
 								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
 								point.attributes = va.attributes;
