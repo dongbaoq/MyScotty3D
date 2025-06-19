@@ -697,15 +697,6 @@ void Pipeline<p, P, flags>::rasterize_line(
 		return;
 	}
 
-	// { // As a placeholder, draw a point in the middle of the line:
-	// 	//(remove this code once you have a real implementation)
-	// 	Fragment mid;
-	// 	mid.fb_position = (va.fb_position + vb.fb_position) / 2.0f;
-	// 	mid.attributes = va.attributes;
-	// 	mid.derivatives.fill(Vec2(0.0f, 0.0f));
-	// 	emit_fragment(mid);
-	// }
-
 }
 
 /*
@@ -757,11 +748,96 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 		// A1T3: flat triangles
 		// TODO: rasterize triangle (see block comment above this function).
 
-		// As a placeholder, here's code that draws some lines:
-		//(remove this and replace it with a real solution)
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(va, vb, emit_fragment);
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(vb, vc, emit_fragment);
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(vc, va, emit_fragment);
+		
+		// Making va, vb, vc into counterclockwise order, with va be the most left side vertex. vb.y > vc.y
+		{
+			
+		}
+
+		// Corner case if two x values are the same.
+		{
+
+		}
+
+		// From va.x, increments x coordinate and rasterize pixels.
+		{
+			Fragment point;
+			int x, y;
+			float slope_high = (vb.fb_position.y - va.fb_position.y) / (vb.fb_position.x - va.fb_position.x);
+			float slope_low = (vc.fb_position.y - va.fb_position.y) / (vc.fb_position.x - va.fb_position.x);
+			float y_max = va.fb_position.y + slope_high * 0.5;
+			float y_min = va.fb_position.y + slope_low * 0.5;
+			float interpolate_z;
+
+			for(x = std::floor(va.fb_position.x) ; (x <= vb.fb_position.x) && (x <= vc.fb_position.x) ; x++){
+				// y_min <= y + 0.5 <= y_max
+				for(y = std::floor(y_min - 0.5f) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+					point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+					emit_fragment(point);
+				}
+				y_max += slope_high;
+				y_min += slope_low;
+			}
+
+			{
+				float x_max;
+				if(vb.fb_position.x > vc.fb_position.x){
+					x_max = vb.fb_position.x;
+				}else{
+					x_max = vc.fb_position.x;
+				}
+
+				float slope_other = (vb.fb_position.y - vc.fb_position.y) / (vb.fb_position.x - vc.fb_position.x);
+				if(slope_other > FLT_EPSILON){
+					for( ; x <= x_max ; x++){
+						// y_min < y + 0.5 <= y_max
+						for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							emit_fragment(point);
+						}
+						y_max += slope_high;
+						y_min += slope_other;
+					}
+				}else if(slope_other < (-1) * FLT_EPSILON){
+					for( ; x <= x_max ; x++){
+						// y_min < y + 0.5 <= y_max
+						for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+							point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+							emit_fragment(point);
+						}
+						y_max += slope_other;
+						y_min += slope_low;
+					}
+				}else{
+					bool topedge = false;
+					if(slope_high < 0){
+						topedge = true;
+					}
+					if(topedge){
+						for( ; x <= x_max ; x++){
+							// y_min <= y + 0.5 <= y_max 
+							for(y = std::floor(y_min - 0.5) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+								emit_fragment(point);
+							}
+							y_max += slope_high;
+						}
+					}else{
+						for( ; x <= vb.fb_position.x ; x++){
+							// y_min < y + 0.5 <= y_max 
+							for(y = std::floor(-0.5f - y_min) * (-1) ; y <= std::floor(0.5f - y_max) * (-1) ; y++){
+								point.fb_position = Vec3(x + 0.5f, y + 0.5f, interpolate_z);
+								emit_fragment(point);
+							}
+							y_max += slope_low;
+						}
+					}		
+				}
+			}
+
+
+		}
+
 	} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
 		// A1T5: screen-space smooth triangles
 		// TODO: rasterize triangle (see block comment above this function).
